@@ -328,7 +328,7 @@
     "jest-html-reporter": "^4.4.0",
     "jest-websocket-mock": "^2.5.0",
     "js-yaml-loader": "^1.2.2",
-    "jsdom": "^29.1.1",
+    "jsdom": "^30.0.0",
     "lerna": "^9.0.4",
     "lightningcss": "^1.33.0",
     "mini-css-extract-plugin": "^2.10.2",
@@ -403,7 +403,7 @@
     "eslint-plugin-jest-dom": {
       "eslint": "$eslint"
     },
-    "fast-uri": "^3.1.4",
+    "fast-uri": "^3.1.5",
     "fast-xml-parser": "^5.8.0",
     "http-proxy-middleware": "^2.0.10",
     "jest-circus": "^30.4.0",
