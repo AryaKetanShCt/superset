@@ -17,6 +17,8 @@
  * under the License.
  */
 const zlib = require('zlib');
+const { Writable } = require('stream');
+const { pipeline } = require('stream/promises');
 const { decompress: zstdDecompress } = require('simple-zstd');
 
 const yargs = require('yargs');
@@ -118,9 +120,7 @@ function copyHeaders(originalResponse, response) {
  * local webpack-dev-server build.
  */
 async function processHTML(proxyResponse, response) {
-  let body = Buffer.from([]);
-  let originalResponse = proxyResponse;
-  const responseEncoding = originalResponse.headers['content-encoding'];
+  const responseEncoding = proxyResponse.headers['content-encoding'];
 
   // decode GZIP response
   let uncompress;
@@ -133,23 +133,30 @@ async function processHTML(proxyResponse, response) {
   } else if (responseEncoding === 'zstd') {
     uncompress = await zstdDecompress();
   }
-  if (uncompress) {
-    originalResponse.pipe(uncompress);
-    originalResponse = uncompress;
-  }
 
-  originalResponse
-    .on('data', data => {
-      body = Buffer.concat([body, data]);
-    })
-    .on('error', error => {
-      // eslint-disable-next-line no-console
-      console.error(error);
-      response.end(`Error fetching proxied request: ${error.message}`);
-    })
-    .on('end', () => {
-      response.end(toDevHTML(body.toString()));
-    });
+  const chunks = [];
+  const collector = new Writable({
+    write(chunk, encoding, callback) {
+      chunks.push(chunk);
+      callback();
+    },
+  });
+
+  // `pipeline` (unlike `.pipe()`) destroys every stream in the chain -- and
+  // rejects -- as soon as any one of them errors or closes prematurely. A
+  // proxied backend connection dying mid-response (e.g. the Flask dev
+  // server's reloader restarting on a file save) is exactly that case:
+  // plain `.pipe()` never forwards the upstream error/close to `uncompress`,
+  // so `uncompress` (and, for `zstd`, the child process backing it) sits
+  // waiting for input that will never arrive, `end`/`error` never fire, and
+  // the client-facing response hangs forever instead of failing fast.
+  await pipeline(
+    ...(uncompress
+      ? [proxyResponse, uncompress, collector]
+      : [proxyResponse, collector]),
+  );
+
+  response.end(toDevHTML(Buffer.concat(chunks).toString()));
 }
 
 module.exports = newManifest => {
