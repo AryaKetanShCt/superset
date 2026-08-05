@@ -32,7 +32,7 @@
     "@math.gl/web-mercator": "^4.1.0",
     "mapbox-gl": "^3.27.0",
     "maplibre-gl": "^6.0.0",
-    "react-map-gl": "^8.1.1",
+    "react-map-gl": "^8.1.2",
     "supercluster": "^8.0.1"
   },
   "devDependencies": {
